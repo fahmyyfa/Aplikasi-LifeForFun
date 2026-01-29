@@ -3,6 +3,15 @@ enum TransactionType {
   income,
   expense;
 
+  String get value {
+    switch (this) {
+      case TransactionType.income:
+        return 'income';
+      case TransactionType.expense:
+        return 'expense';
+    }
+  }
+
   String get displayName {
     switch (this) {
       case TransactionType.income:

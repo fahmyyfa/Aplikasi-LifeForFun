@@ -78,27 +78,36 @@ class NotificationService {
 
   /// Request notification permissions (iOS)
   Future<bool> requestPermissions() async {
-    final androidPlugin = _notifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    
-    if (androidPlugin != null) {
-      final granted = await androidPlugin.requestNotificationsPermission();
-      return granted ?? false;
+    if (!_isInitialized) {
+      await initialize();
     }
-
-    final iosPlugin = _notifications
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
     
-    if (iosPlugin != null) {
-      final granted = await iosPlugin.requestPermissions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-      return granted ?? false;
-    }
+    try {
+      final androidPlugin = _notifications
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      
+      if (androidPlugin != null) {
+        final granted = await androidPlugin.requestNotificationsPermission();
+        return granted ?? false;
+      }
 
-    return true;
+      final iosPlugin = _notifications
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      
+      if (iosPlugin != null) {
+        final granted = await iosPlugin.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        return granted ?? false;
+      }
+
+      return true;
+    } catch (e) {
+      // Silently fail on permission request errors
+      return false;
+    }
   }
 
   /// Calculate notification time: H-1 at 20:00 local time
@@ -198,7 +207,13 @@ class NotificationService {
 
   /// Cancel all notifications
   Future<void> cancelAllNotifications() async {
-    await _notifications.cancelAll();
+    if (!_isInitialized) return;
+    
+    try {
+      await _notifications.cancelAll();
+    } catch (e) {
+      // Silently fail on cancel errors
+    }
   }
 
   /// Get all pending notifications
@@ -209,36 +224,40 @@ class NotificationService {
   /// Reschedule all fasting notifications from database
   /// Call this when app opens or when fasting schedule changes
   Future<void> rescheduleAllNotifications(SupabaseClient client, String userId) async {
-    await initialize();
+    try {
+      await initialize();
 
-    // Cancel existing notifications first
-    await cancelAllNotifications();
+      // Cancel existing notifications first
+      await cancelAllNotifications();
 
-    // Fetch upcoming fasting schedules from Supabase
-    final now = DateTime.now();
-    final response = await client
-        .from('fasting_schedules')
-        .select()
-        .eq('user_id', userId)
-        .gte('fasting_date', now.toIso8601String().split('T')[0])
-        .order('fasting_date', ascending: true);
+      // Fetch upcoming fasting schedules from Supabase
+      final now = DateTime.now();
+      final response = await client
+          .from('fasting_schedules')
+          .select()
+          .eq('user_id', userId)
+          .gte('fasting_date', now.toIso8601String().split('T')[0])
+          .order('fasting_date', ascending: true);
 
-    if ((response as List).isEmpty) {
-      return;
-    }
+      if ((response as List).isEmpty) {
+        return;
+      }
 
-    // Schedule notifications for each upcoming fasting
-    for (int i = 0; i < response.length; i++) {
-      final schedule = FastingScheduleModel.fromJson(response[i]);
-      
-      // Skip completed fasting
-      if (schedule.isCompleted) continue;
+      // Schedule notifications for each upcoming fasting
+      for (int i = 0; i < response.length; i++) {
+        final schedule = FastingScheduleModel.fromJson(response[i]);
+        
+        // Skip completed fasting
+        if (schedule.isCompleted) continue;
 
-      await scheduleFastingNotification(
-        notificationId: schedule.id.hashCode.abs() % 100000, // Unique ID from UUID
-        fastingDate: schedule.fastingDate,
-        fastingType: schedule.fastingType.displayName,
-      );
+        await scheduleFastingNotification(
+          notificationId: schedule.id.hashCode.abs() % 100000, // Unique ID from UUID
+          fastingDate: schedule.fastingDate,
+          fastingType: schedule.fastingType.displayName,
+        );
+      }
+    } catch (e) {
+      // Silently fail on reschedule errors to prevent app crash
     }
   }
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/router.dart';
@@ -11,6 +13,10 @@ import 'core/services/notification_service.dart';
 void main() async {
   // Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize date formatting for Indonesian locale
+  await initializeDateFormatting('id_ID', null);
+  Intl.defaultLocale = 'id_ID';
 
   // Initialize Supabase
   await Supabase.initialize(

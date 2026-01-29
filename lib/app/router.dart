@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/providers/supabase_provider.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -36,19 +37,28 @@ final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>()
 
 /// GoRouter provider
 final routerProvider = Provider<GoRouter>((ref) {
-  final isAuthenticated = ref.watch(isAuthenticatedProvider);
+  final authListenable = ref.watch(authListenableProvider);
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
+    refreshListenable: authListenable,
     redirect: (context, state) {
+      // Get auth state from stream
+      final authState = ref.read(authStateChangesProvider);
+      final isAuthenticated = authState.valueOrNull?.session != null;
+      
+      // Also check synchronous session for initial load
+      final hasSession = Supabase.instance.client.auth.currentSession != null;
+      final isLoggedIn = isAuthenticated || hasSession;
+      
       final isLoggingIn = state.matchedLocation == AppRoutes.login;
       final isRegistering = state.matchedLocation == AppRoutes.register;
       final isSplash = state.matchedLocation == AppRoutes.splash;
 
       // If not authenticated, redirect to login (except for login/register pages)
-      if (!isAuthenticated) {
+      if (!isLoggedIn) {
         if (isLoggingIn || isRegistering) {
           return null; // Stay on login/register page
         }
@@ -56,7 +66,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // If authenticated and on auth pages, redirect to dashboard
-      if (isAuthenticated && (isLoggingIn || isRegistering || isSplash)) {
+      if (isLoggedIn && (isLoggingIn || isRegistering || isSplash)) {
         return AppRoutes.dashboard;
       }
 
