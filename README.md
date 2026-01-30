@@ -17,12 +17,12 @@ AI Integration: Google Generative AI (Gemini SDK).
 
 🚀 Memulai (Getting Started)
 Untuk menjalankan aplikasi ini di lingkungan lokal Anda, ikuti langkah-langkah berikut:
-  1. Setup Database (Supabase)
+1. Setup Database (Supabase)
 - Buat proyek baru di Supabase Dashboard.
 - Buka SQL Editor dan jalankan perintah yang ada di file database_schema.sql (atau gunakan skema SQL yang terlampir di file implementation_plan.md).
 - Pastikan Row Level Security (RLS) sudah aktif agar data Anda tetap aman.
 
-  2. Konfigurasi Flutter
+2. Konfigurasi Flutter
 - Clone repositori ini:
 - Bash
 - git clone https://github.com/username/repository-name.git
