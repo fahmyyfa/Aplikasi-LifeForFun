@@ -27,8 +27,8 @@ class DailyLogModel {
       id: json['id'] as String,
       userId: json['user_id'] as String,
       logDate: DateTime.parse(json['log_date'] as String),
-      dzikirPagi: json['dzikir_pagi'] as bool? ?? false,
-      dzikirPetang: json['dzikir_petang'] as bool? ?? false,
+      dzikirPagi: json['dhikr_morning'] as bool? ?? false,  // DB column
+      dzikirPetang: json['dhikr_evening'] as bool? ?? false,  // DB column
       exerciseType: json['exercise_type'] as String?,
       exerciseDuration: json['exercise_duration'] as int?,
       exerciseNotes: json['exercise_notes'] as String?,
@@ -41,8 +41,8 @@ class DailyLogModel {
       'id': id,
       'user_id': userId,
       'log_date': logDate.toIso8601String().split('T')[0],
-      'dzikir_pagi': dzikirPagi,
-      'dzikir_petang': dzikirPetang,
+      'dhikr_morning': dzikirPagi,  // DB column
+      'dhikr_evening': dzikirPetang,  // DB column
       'exercise_type': exerciseType,
       'exercise_duration': exerciseDuration,
       'exercise_notes': exerciseNotes,
@@ -54,8 +54,8 @@ class DailyLogModel {
     return {
       'user_id': userId,
       'log_date': logDate.toIso8601String().split('T')[0],
-      'dzikir_pagi': dzikirPagi,
-      'dzikir_petang': dzikirPetang,
+      'dhikr_morning': dzikirPagi,  // DB column
+      'dhikr_evening': dzikirPetang,  // DB column
       'exercise_type': exerciseType,
       'exercise_duration': exerciseDuration,
       'exercise_notes': exerciseNotes,

@@ -14,7 +14,7 @@ class ApiConstants {
 
   /// Google Gemini API Key
   /// TODO: Replace with your actual Gemini API key from https://makersuite.google.com/app/apikey
-  static const String geminiApiKey = 'YOUR_GEMINI_API_KEY_HERE';
+  static const String geminiApiKey = 'AIzaSyBBqWc7E1vwysZLH-tdMWEEY7MoG9iuVTA';
 
   /// Gemini Model for vision tasks
   static const String geminiVisionModel = 'gemini-1.5-flash';

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/supabase_provider.dart';
@@ -84,11 +85,16 @@ class FinanceNotifier extends AsyncNotifier<FinanceState> {
     String? description,
   }) async {
     final user = ref.read(currentUserProvider);
-    if (user == null) return;
+    if (user == null) {
+      throw Exception('User tidak terautentikasi. Silakan login kembali.');
+    }
 
+    final previousState = state.valueOrNull ?? const FinanceState();
     state = const AsyncLoading();
 
     try {
+      debugPrint('[FinanceProvider] Adding transaction for user: ${user.id}');
+      
       await _repository.addTransaction(
         userId: user.id,
         type: type,
@@ -98,23 +104,40 @@ class FinanceNotifier extends AsyncNotifier<FinanceState> {
         description: description,
       );
 
-      // Reload data
+      debugPrint('[FinanceProvider] Transaction added successfully');
+      
+      // Reload data and invalidate provider
       state = AsyncData(await _loadFinanceData(user.id));
-    } catch (e) {
-      state = AsyncData(FinanceState(error: e.toString()));
+    } catch (e, stackTrace) {
+      debugPrint('[FinanceProvider] Error adding transaction: $e');
+      debugPrint('[FinanceProvider] Stack trace: $stackTrace');
+      
+      // Preserve previous state and set error
+      state = AsyncData(previousState.copyWith(error: e.toString()));
+      
+      // Re-throw so UI can catch and display error
+      rethrow;
     }
   }
 
   /// Delete a transaction
   Future<void> deleteTransaction(String transactionId) async {
     final user = ref.read(currentUserProvider);
-    if (user == null) return;
+    if (user == null) {
+      throw Exception('User tidak terautentikasi. Silakan login kembali.');
+    }
+
+    final previousState = state.valueOrNull ?? const FinanceState();
 
     try {
+      debugPrint('[FinanceProvider] Deleting transaction: $transactionId');
       await _repository.deleteTransaction(transactionId);
       state = AsyncData(await _loadFinanceData(user.id));
-    } catch (e) {
-      // Handle error
+    } catch (e, stackTrace) {
+      debugPrint('[FinanceProvider] Error deleting transaction: $e');
+      debugPrint('[FinanceProvider] Stack trace: $stackTrace');
+      state = AsyncData(previousState.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -123,8 +146,16 @@ class FinanceNotifier extends AsyncNotifier<FinanceState> {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
+    final previousState = state.valueOrNull ?? const FinanceState();
     state = const AsyncLoading();
-    state = AsyncData(await _loadFinanceData(user.id));
+    
+    try {
+      state = AsyncData(await _loadFinanceData(user.id));
+    } catch (e, stackTrace) {
+      debugPrint('[FinanceProvider] Error refreshing data: $e');
+      debugPrint('[FinanceProvider] Stack trace: $stackTrace');
+      state = AsyncData(previousState.copyWith(error: e.toString()));
+    }
   }
 }
 

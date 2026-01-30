@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/wishlist_item_model.dart';
@@ -11,7 +12,7 @@ class WishlistRepository {
   /// Get all wishlist items for a user
   Future<List<WishlistItemModel>> getWishlistItems(String userId) async {
     final response = await _client
-        .from('wishlist_items')
+        .from('wishlist')
         .select()
         .eq('user_id', userId)
         .order('created_at', ascending: false);
@@ -24,7 +25,7 @@ class WishlistRepository {
   /// Get unpurchased wishlist items
   Future<List<WishlistItemModel>> getUnpurchasedItems(String userId) async {
     final response = await _client
-        .from('wishlist_items')
+        .from('wishlist')
         .select()
         .eq('user_id', userId)
         .eq('is_purchased', false)
@@ -43,19 +44,43 @@ class WishlistRepository {
     String? notes,
     String? imageUrl,
   }) async {
-    final response = await _client
-        .from('wishlist_items')
-        .insert({
-          'user_id': userId,
-          'item_name': name,
-          'price': price,
-          'notes': notes,
-          'image_url': imageUrl,
-        })
-        .select()
-        .single();
+    debugPrint('[WishlistRepository] Adding wishlist item...');
+    debugPrint('[WishlistRepository] user_id: $userId');
+    debugPrint('[WishlistRepository] name: $name, price: $price');
+    
+    try {
+      final insertData = {
+        'user_id': userId,
+        'item_name': name,
+        'price': price,
+        'notes': notes,
+        'image_url': imageUrl,
+      };
+      
+      debugPrint('[WishlistRepository] Insert data: $insertData');
+      
+      final response = await _client
+          .from('wishlist')
+          .insert(insertData)
+          .select()
+          .single();
 
-    return WishlistItemModel.fromJson(response);
+      debugPrint('[WishlistRepository] Success! Response: $response');
+      return WishlistItemModel.fromJson(response);
+    } on PostgrestException catch (e) {
+      debugPrint('[WishlistRepository] PostgrestException: ${e.message}');
+      debugPrint('[WishlistRepository] Code: ${e.code}, Details: ${e.details}');
+      debugPrint('[WishlistRepository] Hint: ${e.hint}');
+      
+      // Re-throw with more descriptive message
+      if (e.code == '42501') {
+        throw Exception('Izin ditolak (RLS Policy). Pastikan Anda sudah login dan memiliki akses.');
+      }
+      throw Exception('Database error: ${e.message}');
+    } catch (e) {
+      debugPrint('[WishlistRepository] Unexpected error: $e');
+      rethrow;
+    }
   }
 
   /// Update wishlist item
@@ -80,7 +105,7 @@ class WishlistRepository {
     }
 
     final response = await _client
-        .from('wishlist_items')
+        .from('wishlist')
         .update(updates)
         .eq('id', itemId)
         .select()
@@ -97,7 +122,7 @@ class WishlistRepository {
   /// Delete wishlist item
   Future<void> deleteWishlistItem(String itemId) async {
     await _client
-        .from('wishlist_items')
+        .from('wishlist')
         .delete()
         .eq('id', itemId);
   }

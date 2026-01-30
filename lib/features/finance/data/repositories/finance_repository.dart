@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/transaction_model.dart';
@@ -63,20 +64,47 @@ class FinanceRepository {
     required DateTime transactionDate,
     String? description,
   }) async {
-    final response = await _client
-        .from('transactions')
-        .insert({
-          'user_id': userId,
-          'type': type.value,
-          'category': category,
-          'amount': amount,
-          'transaction_date': transactionDate.toIso8601String().split('T')[0],
-          'description': description,
-        })
-        .select()
-        .single();
+    debugPrint('[FinanceRepository] Adding transaction...');
+    debugPrint('[FinanceRepository] user_id: $userId');
+    debugPrint('[FinanceRepository] type: ${type.value}, category: $category, amount: $amount');
+    
+    try {
+      final insertData = {
+        'user_id': userId,
+        'type': type.value,
+        'category': category,
+        'amount': amount,
+        'transaction_date': transactionDate.toIso8601String().split('T')[0],
+        'notes': description,  // DB column is 'notes'
+      };
+      
+      debugPrint('[FinanceRepository] Insert data: $insertData');
+      
+      final response = await _client
+          .from('transactions')
+          .insert(insertData)
+          .select()
+          .single();
 
-    return TransactionModel.fromJson(response);
+      debugPrint('[FinanceRepository] Success! Response: $response');
+      return TransactionModel.fromJson(response);
+    } on PostgrestException catch (e) {
+      debugPrint('[FinanceRepository] PostgrestException: ${e.message}');
+      debugPrint('[FinanceRepository] Code: ${e.code}, Details: ${e.details}');
+      debugPrint('[FinanceRepository] Hint: ${e.hint}');
+      
+      // Re-throw with more descriptive message
+      if (e.code == '42501') {
+        throw Exception('Izin ditolak (RLS Policy). Pastikan Anda sudah login dan memiliki akses.');
+      }
+      if (e.code == '42703') {
+        throw Exception('Kolom tidak ditemukan di database: ${e.message}');
+      }
+      throw Exception('Database error: ${e.message}');
+    } catch (e) {
+      debugPrint('[FinanceRepository] Unexpected error: $e');
+      rethrow;
+    }
   }
 
   /// Update a transaction
@@ -95,7 +123,7 @@ class FinanceRepository {
     if (transactionDate != null) {
       updates['transaction_date'] = transactionDate.toIso8601String().split('T')[0];
     }
-    if (description != null) updates['description'] = description;
+    if (description != null) updates['notes'] = description;  // DB column is 'notes'
 
     final response = await _client
         .from('transactions')
@@ -117,7 +145,9 @@ class FinanceRepository {
 
   /// Calculate balance summary for current month
   Future<BalanceSummary> getBalanceSummary(String userId) async {
+    debugPrint('[FinanceRepository] Getting balance summary for user: $userId');
     final transactions = await getCurrentMonthTransactions(userId);
+    debugPrint('[FinanceRepository] Found ${transactions.length} transactions this month');
 
     double totalIncome = 0;
     double totalExpense = 0;
@@ -130,6 +160,7 @@ class FinanceRepository {
       }
     }
 
+    debugPrint('[FinanceRepository] Balance: Income=$totalIncome, Expense=$totalExpense');
     return BalanceSummary(
       totalIncome: totalIncome,
       totalExpense: totalExpense,

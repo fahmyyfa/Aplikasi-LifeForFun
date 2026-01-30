@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/supabase_provider.dart';
@@ -83,11 +84,16 @@ class WishlistNotifier extends AsyncNotifier<WishlistState> {
     String? imageUrl,
   }) async {
     final user = ref.read(currentUserProvider);
-    if (user == null) return;
+    if (user == null) {
+      throw Exception('User tidak terautentikasi. Silakan login kembali.');
+    }
 
+    final previousState = state.valueOrNull ?? const WishlistState();
     state = const AsyncLoading();
 
     try {
+      debugPrint('[WishlistProvider] Adding wishlist item for user: ${user.id}');
+      
       await _repository.addWishlistItem(
         userId: user.id,
         name: name,
@@ -96,36 +102,61 @@ class WishlistNotifier extends AsyncNotifier<WishlistState> {
         imageUrl: imageUrl,
       );
 
+      debugPrint('[WishlistProvider] Wishlist item added successfully');
+      
       // Reload data
       state = AsyncData(await _loadWishlistData(user.id));
-    } catch (e) {
-      state = AsyncData(WishlistState(error: e.toString()));
+    } catch (e, stackTrace) {
+      debugPrint('[WishlistProvider] Error adding wishlist item: $e');
+      debugPrint('[WishlistProvider] Stack trace: $stackTrace');
+      
+      // Preserve previous state and set error
+      state = AsyncData(previousState.copyWith(error: e.toString()));
+      
+      // Re-throw so UI can catch and display error
+      rethrow;
     }
   }
 
   /// Mark item as purchased
   Future<void> markAsPurchased(String itemId) async {
     final user = ref.read(currentUserProvider);
-    if (user == null) return;
+    if (user == null) {
+      throw Exception('User tidak terautentikasi. Silakan login kembali.');
+    }
+
+    final previousState = state.valueOrNull ?? const WishlistState();
 
     try {
+      debugPrint('[WishlistProvider] Marking item as purchased: $itemId');
       await _repository.markAsPurchased(itemId);
       state = AsyncData(await _loadWishlistData(user.id));
-    } catch (e) {
-      // Handle error
+    } catch (e, stackTrace) {
+      debugPrint('[WishlistProvider] Error marking as purchased: $e');
+      debugPrint('[WishlistProvider] Stack trace: $stackTrace');
+      state = AsyncData(previousState.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
   /// Delete wishlist item
   Future<void> deleteWishlistItem(String itemId) async {
     final user = ref.read(currentUserProvider);
-    if (user == null) return;
+    if (user == null) {
+      throw Exception('User tidak terautentikasi. Silakan login kembali.');
+    }
+
+    final previousState = state.valueOrNull ?? const WishlistState();
 
     try {
+      debugPrint('[WishlistProvider] Deleting wishlist item: $itemId');
       await _repository.deleteWishlistItem(itemId);
       state = AsyncData(await _loadWishlistData(user.id));
-    } catch (e) {
-      // Handle error
+    } catch (e, stackTrace) {
+      debugPrint('[WishlistProvider] Error deleting item: $e');
+      debugPrint('[WishlistProvider] Stack trace: $stackTrace');
+      state = AsyncData(previousState.copyWith(error: e.toString()));
+      rethrow;
     }
   }
 
@@ -134,8 +165,16 @@ class WishlistNotifier extends AsyncNotifier<WishlistState> {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
 
+    final previousState = state.valueOrNull ?? const WishlistState();
     state = const AsyncLoading();
-    state = AsyncData(await _loadWishlistData(user.id));
+    
+    try {
+      state = AsyncData(await _loadWishlistData(user.id));
+    } catch (e, stackTrace) {
+      debugPrint('[WishlistProvider] Error refreshing data: $e');
+      debugPrint('[WishlistProvider] Stack trace: $stackTrace');
+      state = AsyncData(previousState.copyWith(error: e.toString()));
+    }
   }
 }
 

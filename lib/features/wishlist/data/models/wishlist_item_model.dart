@@ -24,17 +24,19 @@ class WishlistItemModel {
 
   factory WishlistItemModel.fromJson(Map<String, dynamic> json) {
     return WishlistItemModel(
-      id: json['id'] as String,
-      userId: json['user_id'] as String,
-      itemName: json['item_name'] as String,
+      id: json['id']?.toString() ?? '',
+      userId: json['user_id']?.toString() ?? '',
+      itemName: json['item_name']?.toString() ?? 'Unnamed',
       price: json['price'] != null ? (json['price'] as num).toDouble() : null,
       imageUrl: json['image_url'] as String?,
       isPurchased: json['is_purchased'] as bool? ?? false,
       purchasedAt: json['purchased_at'] != null
-          ? DateTime.parse(json['purchased_at'] as String)
+          ? DateTime.tryParse(json['purchased_at'].toString())
           : null,
       notes: json['notes'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'].toString())
+          : DateTime.now(),
     );
   }
 

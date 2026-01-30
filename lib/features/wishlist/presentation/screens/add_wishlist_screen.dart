@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme.dart';
+import '../../providers/wishlist_provider.dart';
 
 class AddWishlistScreen extends ConsumerStatefulWidget {
   const AddWishlistScreen({super.key});
@@ -29,15 +31,62 @@ class _AddWishlistScreenState extends ConsumerState<AddWishlistScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Wishlist berhasil disimpan')),
+    try {
+      // Parse price if provided
+      double? price;
+      if (_priceController.text.isNotEmpty) {
+        final priceText = _priceController.text.replaceAll('.', '').replaceAll(',', '');
+        price = double.tryParse(priceText);
+      }
+
+      // Save to Supabase via provider
+      await ref.read(wishlistNotifierProvider.notifier).addWishlistItem(
+        name: _nameController.text,
+        price: price,
+        notes: _notesController.text.isNotEmpty ? _notesController.text : null,
       );
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Wishlist berhasil disimpan'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[AddWishlistScreen] Error saving wishlist: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan: ${_formatErrorMessage(e)}'),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  /// Format error message for user-friendly display
+  String _formatErrorMessage(dynamic error) {
+    final message = error.toString();
+    if (message.contains('AuthException')) {
+      return 'Sesi login telah berakhir. Silakan login kembali.';
+    }
+    if (message.contains('PostgrestException')) {
+      return 'Gagal menyimpan ke database. Periksa koneksi internet Anda.';
+    }
+    if (message.contains('SocketException') || message.contains('network')) {
+      return 'Tidak ada koneksi internet.';
+    }
+    return message.replaceAll('Exception: ', '');
   }
 
   @override

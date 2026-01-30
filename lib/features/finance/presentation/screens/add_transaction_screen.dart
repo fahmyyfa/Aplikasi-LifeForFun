@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/theme.dart';
 import '../../data/models/transaction_model.dart';
+import '../../providers/finance_provider.dart';
 
 /// Add transaction screen
 class AddTransactionScreen extends ConsumerStatefulWidget {
@@ -53,16 +55,64 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     setState(() => _isLoading = true);
 
-    // TODO: Save to Supabase via provider
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Parse amount (remove thousand separators if any)
+      final amountText = _amountController.text.replaceAll('.', '').replaceAll(',', '');
+      final amount = double.parse(amountText);
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Transaksi berhasil disimpan')),
+      // Save to Supabase via provider
+      await ref.read(financeNotifierProvider.notifier).addTransaction(
+        type: _selectedType,
+        category: _selectedCategory!,
+        amount: amount,
+        transactionDate: _selectedDate,
+        description: _descriptionController.text.isNotEmpty 
+            ? _descriptionController.text 
+            : null,
       );
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Transaksi berhasil disimpan'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[AddTransactionScreen] Error saving transaction: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan: ${_formatErrorMessage(e)}'),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  /// Format error message for user-friendly display
+  String _formatErrorMessage(dynamic error) {
+    final message = error.toString();
+    // Check for common Supabase errors
+    if (message.contains('AuthException')) {
+      return 'Sesi login telah berakhir. Silakan login kembali.';
+    }
+    if (message.contains('PostgrestException')) {
+      return 'Gagal menyimpan ke database. Periksa koneksi internet Anda.';
+    }
+    if (message.contains('SocketException') || message.contains('network')) {
+      return 'Tidak ada koneksi internet.';
+    }
+    // Return cleaned message
+    return message.replaceAll('Exception: ', '');
   }
 
   @override

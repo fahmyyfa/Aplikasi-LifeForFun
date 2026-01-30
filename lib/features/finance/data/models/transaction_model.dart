@@ -51,7 +51,7 @@ class TransactionModel {
       type: json['type'] == 'income' ? TransactionType.income : TransactionType.expense,
       amount: (json['amount'] as num).toDouble(),
       category: json['category'] as String,
-      description: json['description'] as String?,
+      description: json['notes'] as String?,  // DB column is 'notes'
       transactionDate: DateTime.parse(json['transaction_date'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
     );
@@ -64,7 +64,7 @@ class TransactionModel {
       'type': type == TransactionType.income ? 'income' : 'expense',
       'amount': amount,
       'category': category,
-      'description': description,
+      'notes': description,  // DB column is 'notes'
       'transaction_date': transactionDate.toIso8601String().split('T')[0],
       'created_at': createdAt.toIso8601String(),
     };
@@ -76,7 +76,7 @@ class TransactionModel {
       'type': type == TransactionType.income ? 'income' : 'expense',
       'amount': amount,
       'category': category,
-      'description': description,
+      'notes': description,  // DB column is 'notes'
       'transaction_date': transactionDate.toIso8601String().split('T')[0],
     };
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/fasting_schedule_model.dart';
@@ -60,17 +61,24 @@ class FastingRepository {
     required DateTime fastingDate,
     String? notes,
   }) async {
+    debugPrint('[FastingRepository] Adding fasting schedule...');
+    debugPrint('[FastingRepository] user_id: $userId, type: ${fastingType.value}');
+    
+    final insertData = {
+      'user_id': userId,
+      'fasting_type': fastingType.value,
+      'fasting_date': fastingDate.toIso8601String().split('T')[0],
+      'notes': notes,
+    };
+    debugPrint('[FastingRepository] Insert data: $insertData');
+    
     final response = await _client
         .from('fasting_schedules')
-        .insert({
-          'user_id': userId,
-          'fasting_type': fastingType.value,
-          'fasting_date': fastingDate.toIso8601String().split('T')[0],
-          'notes': notes,
-        })
+        .insert(insertData)
         .select()
         .single();
 
+    debugPrint('[FastingRepository] Success! Response: $response');
     return FastingScheduleModel.fromJson(response);
   }
 
